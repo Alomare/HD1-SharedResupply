@@ -1,9 +1,7 @@
--- What the mod asks of Obsidian API while it runs: every player carries the Shared Resupply at the level
--- they bought of the standard one, the whole squad waits out one cooldown for it, and the standard
--- Resupply is hidden, or with the option on, moved to a free code. Applied once the game has the
--- stratagem list, taken back
--- when the mod stops (a lobby that isn't cleared, or a player without the mod), and applied again when
--- the option changes.
+-- What the mod asks of Obsidian API while it runs: every player carries the Shared Resupply, the whole
+-- squad waits out one cooldown for it, and the standard Resupply is hidden, or with the option on, moved
+-- to a free code. Applied once the game has the stratagem list, taken back when the mod stops (a lobby
+-- that isn't cleared, or a player without the mod), and applied again when the option changes.
 local stratagem = obsidian.module("src/stratagem")
 local vanilla = obsidian.module("src/vanilla")
 
@@ -22,7 +20,7 @@ function M.new(api, deps)
 	-- true once everything is in place; false to try again on a later frame.
 	function c:apply(preserve)
 		local s = api.stratagems
-		local ok, why = s.carry(stratagem.NAME, { upgrade = "base" })
+		local ok, why = s.carry(stratagem.NAME)
 		if not ok then
 			if why ~= "not_available" and why ~= "not_cleared" then log_once("carry", "Shared Resupply not carried: " .. tostring(why)) end
 			return false

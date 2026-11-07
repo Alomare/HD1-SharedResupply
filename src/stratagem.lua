@@ -4,7 +4,7 @@ local M = {}
 
 M.NAME = "shared_resupply"
 M.BASE = "stratagem_resupply"
-M.TITLE = "Shared Resupply"
+M.TITLE = "Resupply"
 M.DESCRIPTION = "Drops four ammunition boxes. The cooldown is shared by the whole squad."
 -- The standard Resupply's code. When both are in a player's list, the one the player holds and can call
 -- wins (Obsidian API), and with the option on the standard one moves to a free code (src/vanilla.lua).
@@ -29,9 +29,11 @@ function M.api_ok(version)
 	return true
 end
 
--- Yellow, in no menu: every player carries it, so nobody unlocks it, picks it or buys a level of it. The
--- levels stay the base's, renamed, so the carried entry goes at the level the player bought of the
--- standard Resupply and calls in as fast (15, 10 or 5 seconds).
+-- The call-in, the same for everyone: between the standard Resupply's Mk1 (15 s) and Mk3 (5 s).
+M.CALL_IN = 10
+
+-- Yellow, in no menu: every player carries it, so nobody unlocks it, picks it or buys a level of it, and
+-- it has no levels at all.
 function M.def()
 	return {
 		name = M.NAME,
@@ -43,6 +45,8 @@ function M.def()
 		icon_material = M.ICON_MATERIAL,
 		type = "special",
 		unlock = "manual",
+		stats = { activation_time = M.CALL_IN },
+		upgrades = {},
 	}
 end
 

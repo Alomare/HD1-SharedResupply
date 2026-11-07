@@ -13,16 +13,17 @@ local function joined(t) return table.concat(t, " ") end
 
 -- Stratagem and version
 
-test("the stratagem is yellow, in no menu, on the standard code, with the base's levels", function()
+test("the stratagem is yellow, in no menu, on the standard code, with no levels and a 10 s call-in", function()
 	local d = stratagem.def()
 	eq(d.name, "shared_resupply")
 	eq(d.base, "stratagem_resupply")
 	eq(d.type, "special", "yellow")
 	eq(d.unlock, "manual", "never unlocked, so never offered")
-	eq(d.upgrades, nil, "the base's levels, so the carried entry goes at the level bought of the standard one")
-	eq(d.stats, nil, "the base's cooldown (180 s) and call-in")
+	eq(type(d.upgrades), "table") eq(#d.upgrades, 0, "no Mk2 or Mk3 to buy or show")
+	eq(d.stats.activation_time, 10, "the same call-in for everyone")
+	eq(d.stats.cooldown_time, nil, "the base's cooldown (180 s)")
 	eq(joined(d.code), code("down", "down", "up", "right"))
-	eq(d.title, "Shared Resupply")
+	eq(d.title, "Resupply")
 	eq(d.description, "Drops four ammunition boxes. The cooldown is shared by the whole squad.")
 	eq(d.icon, stratagem.ICON) eq(d.icon_material, stratagem.ICON_MATERIAL)
 	d.code[1] = "up"
@@ -107,7 +108,7 @@ local function fake_api(list)
 		return true
 	end
 	a.stratagems = {
-		carry = function(name, opts) a.carried[name] = opts return call("carry") end,
+		carry = function(name, opts) a.carried[name] = opts == nil and "carried" or opts return call("carry") end,
 		uncarry = function(name) a.carried[name] = nil return call("uncarry") end,
 		share_cooldown = function(name) a.shared[name] = true return call("share_cooldown") end,
 		unshare_cooldown = function(name) a.shared[name] = nil return call("unshare_cooldown") end,
@@ -153,7 +154,7 @@ test("the mod carries the stratagem at the standard one's level, shares the cool
 	local api = fake_api(list)
 	local c = setup(api, list, false)
 	c:frame()
-	eq(api.carried.shared_resupply.upgrade, "base")
+	eq(api.carried.shared_resupply, "carried")
 	eq(api.shared.shared_resupply, true)
 	eq(api.hidden.stratagem_resupply, true)
 	eq(joined(list[1].combo), code("down", "down", "up", "right"), "the hidden one keeps the standard code")
@@ -169,7 +170,7 @@ test("with the option on, the standard Resupply stays and moves to a free code",
 	c:frame()
 	eq(api.hidden.stratagem_resupply, nil, "kept")
 	eq(joined(list[1].combo), code("down", "down", "up", "up"))
-	eq(api.carried.shared_resupply.upgrade, "base")
+	eq(api.carried.shared_resupply, "carried")
 	eq(joined(list[2].combo), code("down", "down", "up", "right"), "the shared one has the standard code")
 	c:undo()
 	eq(joined(list[1].combo), code("down", "down", "up", "right"), "the code goes back")
