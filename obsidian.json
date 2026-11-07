@@ -17,8 +17,9 @@
   "source": "https://github.com/Alomare/HD1-SharedResupply",
   "modules": [
     "src/stratagem.lua",
-    "src/shared_cooldown.lua",
-    "src/vanilla.lua"
+    "src/vanilla.lua",
+    "src/payload.lua",
+    "src/squad.lua"
   ],
   "requires": [
     "obsidian.api"
