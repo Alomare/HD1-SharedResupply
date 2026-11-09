@@ -1,21 +1,20 @@
-"""Builds the Shared Resupply stratagem's icon from the installed game: the Resupply icon recoloured to the
-yellow of the mission ("special") stratagems, such as the Hellbomb.
+"""Builds the Shared Resupply stratagem's icon from the installed game: the Resupply icon on the yellow of the
+mission ("special") stratagems, such as the Hellbomb, with soft white bullets and a pure white plus.
 
 Usage: python tools/build_icon.py [path to Helldivers/contents]
 
 Writes res/icons.material and res/shared_resupply_icon.texture, both for the boot bundle (see "resources"
-in obsidian.json), and internal/icon_preview.png to look at. Needs Pillow.
+in obsidian.json), image.png (the picture Obsidian shows for the mod) and internal/icon_preview.png to look
+at. Needs Pillow.
 
 The icon is drawn like the game's own: an 80x80 uncompressed texture with two mips, in the Resupply
 icon's header, and a material record copied from the Resupply's in hud/hud, so the Loadout screen's clip
 variables and the HUD's shader are the same. Only its name and texture differ.
 """
-import colorsys
 import io
 import struct
 import sys
 import zlib
-from collections import Counter
 from pathlib import Path
 
 from PIL import Image
@@ -30,8 +29,19 @@ ICON = "shared_resupply_icon"
 MATERIAL = "shared_resupply/icons"
 TEXTURE = "shared_resupply/shared_resupply_icon"
 
-# The stratagem whose icon's yellow the Resupply icon takes. Mission stratagems share it.
+# The yellow stratagem the preview shows beside the new icon.
 REFERENCE = "stratagem_hellbomb"
+
+# The Resupply icon's tones, by red value, and the colour each becomes: the frame, inner ring and background
+# of the Hellbomb icon, the front silhouette of the Reinforce icon for the bullets, and white for the plus.
+TONES = [
+    (0, (138, 101, 33)),
+    (44, (184, 147, 71)),
+    (70, (187, 151, 75)),
+    (168, (255, 235, 207)),
+    (255, (255, 255, 255)),
+]
+IMAGE_SCALE = 8
 
 MATERIAL_VERSION = 10
 DIFFUSE_MAP = 0x3aa8b87e
@@ -102,41 +112,19 @@ def game_icons():
     return records, tex
 
 
-def dominant_yellow(image):
-    """The most common saturated, opaque colour of the image: the stratagem's accent."""
-    counts = Counter()
-    for r, g, b, a in image.getdata():
-        if a < 128:
-            continue
-        h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
-        if s > 0.5 and v > 0.4:
-            counts[(r, g, b)] += 1
-    return counts.most_common(1)[0][0]
+def tone(red, channel):
+    """One channel of the colour for a pixel of the given red value, blended between the nearest TONES."""
+    for (low, a), (high, b) in zip(TONES, TONES[1:]):
+        if red <= high:
+            return round(a[channel] + (b[channel] - a[channel]) * (red - low) / (high - low))
+    return TONES[-1][1][channel]
 
 
-def recolour(icon, target, reference):
-    """Keeps each pixel's alpha and brightness, and takes the target's hue and saturation."""
-    th, ts, _ = colorsys.rgb_to_hsv(*(c / 255 for c in target))
-    w, h = icon.size
-    # Scale the brightness so the icon's most common opaque colour (its background) lands on the
-    # reference's most common opaque colour's brightness.
-    def base_value(img):
-        return colorsys.rgb_to_hsv(*(c / 255 for c in Counter(p for p in img.getdata() if p[3] >= 128).most_common(1)[0][0][:3]))[2]
-    scale = base_value(reference) / base_value(icon)
-    out = icon.copy()
-    po = out.load()
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = po[x, y]
-            if a == 0:
-                continue
-            hs, ss, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
-            if v > 0.9 and ss < 0.15:
-                # Near-white highlights (the plus) stay white, as the mission icons' highlights do.
-                continue
-            nr, ng, nb = colorsys.hsv_to_rgb(th, ts, min(1.0, v * scale))
-            po[x, y] = (round(nr * 255), round(ng * 255), round(nb * 255), a)
-    return out
+def recolour(icon):
+    """Maps the icon's tones to TONES by each pixel's red value, keeping alpha. Soft edges blend on their own."""
+    red = icon.getchannel("R")
+    bands = [red.point([tone(v, c) for v in range(256)]) for c in range(3)]
+    return Image.merge("RGBA", (*bands, icon.getchannel("A")))
 
 
 
@@ -171,14 +159,13 @@ def main():
     records, tex = game_icons()
     resupply = Image.open(io.BytesIO(tex["stratagem_resupply"])).convert("RGBA")
     reference = Image.open(io.BytesIO(tex[REFERENCE])).convert("RGBA")
-    target = dominant_yellow(reference)
-    print("sampled yellow from", REFERENCE, "RGB =", target)
-    icon = recolour(resupply, target, reference)
+    icon = recolour(resupply)
     RES.mkdir(exist_ok=True)
     INTERNAL.mkdir(exist_ok=True)
     (RES / "shared_resupply_icon.texture").write_bytes(texture(tex["stratagem_resupply"], icon))
     (RES / "icons.material").write_bytes(material(records["stratagem_resupply"]))
     w, h = icon.size
+    icon.resize((w * IMAGE_SCALE, h * IMAGE_SCALE), Image.Resampling.NEAREST).save(ROOT / "image.png")
     preview = Image.new("RGBA", (w * 12 + 32, h * 4), (30, 30, 30, 255))
     preview.paste(resupply.resize((w * 4, h * 4), Image.Resampling.NEAREST), (0, 0))
     preview.paste(icon.resize((w * 4, h * 4), Image.Resampling.NEAREST), (w * 4 + 16, 0))
