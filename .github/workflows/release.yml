@@ -1,8 +1,11 @@
 # A release: pushing a tag like v1.2.0 packs the mod into a zip and publishes it, and Obsidian offers
-# it as an update to anyone on an older version. The tag has to match "version" in obsidian.json.
+# it as an update to anyone on an older version. Then the Nexus Mods workflow uploads the zip to the mod
+# page (nexus.yml). The tag has to match "version" in obsidian.json.
 #
-# The release notes are the version's section of CHANGELOG.md, and the workflow stops if there isn't one.
-# A tag with a suffix (v1.2.0-beta.1) makes a prerelease, which Obsidian doesn't offer, so use one to
+# The release notes are the version's section of CHANGELOG.md, also used as the version's changelog on Nexus. The
+# workflow stops if there isn't one, or if it breaks the rules for public text in tools/nexus_release.py.
+# A tag with a suffix (v1.2.0-beta.1) makes a prerelease, which Obsidian doesn't offer and Nexus never
+# gets, so use one to
 # try a build by hand. What goes in the zip is set by export-ignore in .gitattributes.
 name: Release
 
@@ -31,6 +34,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v h="## $version" '$0 == h { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md | sed '/./,$!d' > notes.md
           [ -s notes.md ] || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+          python3 tools/nexus_release.py check notes.md
 
       - name: Pack and publish
         run: |
@@ -40,3 +44,13 @@ jobs:
           pre=""
           [[ "$GITHUB_REF_NAME" == *-* ]] && pre="--prerelease"
           gh release create "$GITHUB_REF_NAME" "$id-$version.zip" --title "$(jq -r .name.en obsidian.json) $version" --notes-file notes.md $pre
+
+  # A release made with the workflow's own token starts no other workflow, so the upload is called from here.
+  nexus:
+    needs: release
+    if: ${{ !contains(github.ref_name, '-') }}
+    uses: ./.github/workflows/nexus.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      NEXUS_API_KEY: ${{ secrets.NEXUS_API_KEY }}
