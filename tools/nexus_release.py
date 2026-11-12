@@ -1,15 +1,12 @@
 """Text for the release workflows (.github/workflows/release.yml and nexus.yml).
 
     python tools/nexus_release.py check section.md       # the release rules for a changelog
-    python tools/nexus_release.py changelog section.md   # the changelog as Nexus shows it
     python tools/nexus_release.py files                    # the title and description of the file on Nexus
 
 section.md holds one version's section of CHANGELOG.md.
 
 check: a changelog is a list, one change per line ("- New: ..."), with nothing else in it, and follows the
 rules for public text: no em or en dashes, and none of the words in WORDS.
-
-changelog: the same lines without the list marks, bold or link targets.
 
 files: the upload action always sends a title (the file name, when none is given), so the workflow passes back
 what the page has now and the title and description set by hand on Nexus stay. Read from the public v2 API, no
@@ -49,16 +46,6 @@ def check(text):
     return problems
 
 
-def changelog(text):
-    out = []
-    for s in lines(text):
-        s = re.sub(r"^[-*]\s+", "", s)
-        s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
-        s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
-        out.append(s.replace("`", ""))
-    return "\n".join(out)
-
-
 def files():
     q = {"query": f"{{ modFiles(modId: {MOD_ID}, gameId: {GAME_ID}) {{ name description category }} }}"}
     req = urllib.request.Request(
@@ -83,8 +70,6 @@ def main():
         for p in problems:
             print(f"::error file={sys.argv[2]}::{p}")
         sys.exit(1 if problems else 0)
-    elif len(sys.argv) == 3 and sys.argv[1] == "changelog":
-        print(changelog(open(sys.argv[2], encoding="utf-8").read()))
     elif len(sys.argv) == 2 and sys.argv[1] == "files":
         print(files())
     else:
