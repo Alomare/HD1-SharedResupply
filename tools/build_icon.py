@@ -4,7 +4,7 @@ mission ("special") stratagems, such as the Hellbomb, with soft white bullets an
 Usage: python tools/build_icon.py [path to Helldivers/contents]
 
 Writes res/icons.material and res/shared_resupply_icon.texture, both for the boot bundle (see "resources"
-in obsidian.json), image.png (the picture Obsidian shows for the mod) and internal/icon_preview.png to look
+in obsidian.json), icon.png (the picture Obsidian shows for the mod) and internal/icon_preview.png to look
 at. Needs Pillow.
 
 The icon is drawn like the game's own: an 80x80 uncompressed texture with two mips, in the Resupply
@@ -165,7 +165,7 @@ def main():
     (RES / "shared_resupply_icon.texture").write_bytes(texture(tex["stratagem_resupply"], icon))
     (RES / "icons.material").write_bytes(material(records["stratagem_resupply"]))
     w, h = icon.size
-    icon.resize((w * IMAGE_SCALE, h * IMAGE_SCALE), Image.Resampling.NEAREST).save(ROOT / "image.png")
+    icon.resize((w * IMAGE_SCALE, h * IMAGE_SCALE), Image.Resampling.NEAREST).save(ROOT / "icon.png")
     preview = Image.new("RGBA", (w * 12 + 32, h * 4), (30, 30, 30, 255))
     preview.paste(resupply.resize((w * 4, h * 4), Image.Resampling.NEAREST), (0, 0))
     preview.paste(icon.resize((w * 4, h * 4), Image.Resampling.NEAREST), (w * 4 + 16, 0))
