@@ -2,10 +2,10 @@
 
 New, changed, fixed or removed features, one line each, brief and direct. The section for a release becomes the release notes.
 
-## Next
+## 1.2.0
 
 - New: Ammo box count option, from 2 to 4 boxes per Resupply.
-- Fixed: with the standard Resupply removed, other players could see a loadout with the 4th stratagem slot empty. The fix is in Obsidian API, from the release after 1.52.0.
+- Fixed: with the standard Resupply removed, other players could see a loadout with the 4th stratagem slot empty. The fix comes with the next Obsidian API release.
 
 ## 1.1.0
 
