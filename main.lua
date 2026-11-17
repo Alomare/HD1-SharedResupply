@@ -37,9 +37,10 @@ obsidian.on_session(function(on)
 	if not on then setup:undo() end
 end)
 
--- Four boxes in the crate, on the thrower's machine, where the game spawns the crate's boxes.
+-- The chosen number of boxes in the crate, on the thrower's machine, where the game spawns the crate's
+-- boxes: the thrower's option decides.
 obsidian.hook("SupplyCrateComponent", "setup_master", function(original, ...)
-	return payload.setup_master(stratagem.NAME, original, ...)
+	return payload.setup_master(stratagem.NAME, payload.count(obsidian.settings), original, ...)
 end)
 
 obsidian.log("Shared Resupply ready")

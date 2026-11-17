@@ -1,20 +1,37 @@
--- Four ammunition boxes in the Shared Resupply's crate. The game's ammunition crate
--- (gameobjects/supplycrate_ammunition) lists two boxes in supply_crate_info.content, and
+-- The ammunition boxes in the Shared Resupply's crate: 2 to 4, by the Ammo box count option of the
+-- player who calls it. The game's ammunition crate (gameobjects/supplycrate_ammunition) lists two boxes
+-- in supply_crate_info.content, and
 -- SupplyCrateComponent.setup_master spawns them, on the machine of whoever threw the flare only: the
 -- hellpod and the crate belong to that machine, and every other machine gets the boxes as the game's own
--- replicated pickups. For a crate of this stratagem the list holds four while the game reads it, then goes
--- back. Should the game read another copy of the list, the two missing boxes are spawned after.
+-- replicated pickups. For a crate of this stratagem the list holds the chosen count while the game reads
+-- it, then goes back. Should the game read another copy of the list, the missing boxes are spawned after.
 local M = {}
 
 M.BOX = "gameobjects/pickup_ammunitionbox_01"
 M.COUNT = 4
--- Two by two, on the spacing of the game's own two (0.5 m, 0.25 m up).
-M.GRID = {
-	{ 0.25, 0.25, 0.25 }, { 0.25, -0.25, 0.25 },
-	{ -0.25, 0.25, 0.25 }, { -0.25, -0.25, 0.25 },
+M.MIN, M.MAX = 2, 4
+M.OPTION = "box_count"
+-- On the spacing of the game's own two (0.5 m, 0.25 m up): two side by side, three in a triangle,
+-- four two by two.
+M.GRIDS = {
+	[2] = { { 0.25, 0, 0.25 }, { -0.25, 0, 0.25 } },
+	[3] = { { 0.25, 0.25, 0.25 }, { 0.25, -0.25, 0.25 }, { -0.25, 0, 0.25 } },
+	[4] = {
+		{ 0.25, 0.25, 0.25 }, { 0.25, -0.25, 0.25 },
+		{ -0.25, 0.25, 0.25 }, { -0.25, -0.25, 0.25 },
+	},
 }
 -- Beside the game's two, when only those were spawned.
 M.EXTRA = { { 0.5, 0, 0.25 }, { -0.5, 0, 0.25 } }
+
+-- The option, through obsidian.settings (or a stand-in with get): a whole number from 2 to 4, else 4.
+function M.count(settings)
+	if type(settings) ~= "table" or type(settings.get) ~= "function" then return M.COUNT end
+	local ok, v = pcall(settings.get, M.OPTION)
+	v = ok and tonumber(v)
+	if not v or v ~= v then return M.COUNT end
+	return math.max(M.MIN, math.min(M.MAX, math.floor(v + 0.5)))
+end
 
 -- The game, swapped in the tests.
 M.engine = {
@@ -35,11 +52,11 @@ function M.ours(init, name)
 	return type(init) == "table" and type(init.stratagem_info) == "table" and init.stratagem_info.name == name
 end
 
--- The four boxes, in the game's form, from the game's list (for the unit path).
-function M.content(old)
+-- The boxes, in the game's form, from the game's list (for the unit path).
+function M.content(old, count)
 	local path = type(old) == "table" and type(old[1]) == "table" and old[1].unit_path or M.BOX
 	local out = {}
-	for i, offset in ipairs(M.GRID) do
+	for i, offset in ipairs(M.GRIDS[count] or M.GRIDS[M.COUNT]) do
 		out[i] = { unit_path = path, spawn_offset = { offset[1], offset[2], offset[3] }, spawn_rotation = 0 }
 	end
 	return out
@@ -52,29 +69,31 @@ local function crate_info(unit, init)
 end
 
 -- The boxes the game didn't spawn, beside the ones it did.
-local function top_up(self, unit, ctx, init, path)
+local function top_up(self, unit, ctx, init, path, count)
 	local state = type(ctx) == "table" and ctx.state
 	if type(state) ~= "table" or state.was_migrated or type(state.content_units) ~= "table" then return end
 	local units = state.content_units
 	local extra = 1
-	while #units < M.COUNT and M.EXTRA[extra] do
+	while #units < count and M.EXTRA[extra] do
 		init.use_rotation, init.hide_time = true, state.open_timer
 		units[#units + 1] = self.entity_spawner:spawn_entity(path, M.engine.at(unit, M.EXTRA[extra]), M.engine.turn(0), nil, init)
 		extra = extra + 1
 	end
 end
 
--- SupplyCrateComponent.setup_master(self, unit, ctx, init) for every crate; name: this stratagem's.
-function M.setup_master(name, original, self, unit, ctx, init, ...)
+-- SupplyCrateComponent.setup_master(self, unit, ctx, init) for every crate; name: this stratagem's,
+-- count: the boxes in it (2 to 4).
+function M.setup_master(name, count, original, self, unit, ctx, init, ...)
 	if not M.ours(init, name) then return original(self, unit, ctx, init, ...) end
+	count = M.GRIDS[count] and count or M.COUNT
 	local info = crate_info(unit, init)
 	local old = info and info.content
-	if info then info.content = M.content(old) end
+	if info then info.content = M.content(old, count) end
 	local ok, err = pcall(original, self, unit, ctx, init, ...)
 	if info then info.content = old end
 	if not ok then error(err, 0) end
 	local path = type(old) == "table" and type(old[1]) == "table" and old[1].unit_path or M.BOX
-	top_up(self, unit, ctx, init, path)
+	top_up(self, unit, ctx, init, path, count)
 end
 
 return M

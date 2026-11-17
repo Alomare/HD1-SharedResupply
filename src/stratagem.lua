@@ -5,7 +5,7 @@ local M = {}
 M.NAME = "shared_resupply"
 M.BASE = "stratagem_resupply"
 M.TITLE = "Resupply"
-M.DESCRIPTION = "Drops four ammunition boxes. The cooldown is shared by the whole squad."
+M.DESCRIPTION = "Drops a crate of ammunition boxes. The cooldown is shared by the whole squad."
 -- The standard Resupply's code. When both are in a player's list, the one the player holds and can call
 -- wins (Obsidian API), and with the option on the standard one moves to a free code (src/vanilla.lua).
 M.CODE = { "down", "down", "up", "right" }

@@ -7,7 +7,7 @@
   },
   "image": "icon.png",
   "description": {
-    "en": "Brings the squad resupply from HELLDIVERS 2: a mission stratagem every player carries that drops 4 ammo boxes, on a 180 second cooldown shared by the whole squad. Removes the standard Resupply."
+    "en": "Implements the Helldivers 2 resupply: 4 ammo boxes at a 180s cooldown. Box count and native resupply removal are configurable."
   },
   "authors": [
     "Alomare"
@@ -49,6 +49,20 @@
       },
       "description": {
         "en": "Keep the standard Resupply in the Arsenal and Loadout alongside the shared one."
+      }
+    },
+    {
+      "id": "box_count",
+      "type": "number",
+      "default": 4,
+      "min": 2,
+      "max": 4,
+      "step": 1,
+      "label": {
+        "en": "Ammo box count"
+      },
+      "description": {
+        "en": "How many ammo boxes the Resupply drops. The setting of the player who calls the Resupply decides."
       }
     }
   ],

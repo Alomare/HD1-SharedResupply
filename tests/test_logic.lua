@@ -24,7 +24,7 @@ test("the stratagem is yellow, in no menu, on the standard code, with no levels 
 	eq(d.stats.cooldown_time, nil, "the base's cooldown (180 s)")
 	eq(joined(d.code), code("down", "down", "up", "right"))
 	eq(d.title, "Resupply")
-	eq(d.description, "Drops four ammunition boxes. The cooldown is shared by the whole squad.")
+	eq(d.description, "Drops a crate of ammunition boxes. The cooldown is shared by the whole squad.")
 	eq(d.icon, stratagem.ICON) eq(d.icon_material, stratagem.ICON_MATERIAL)
 	d.code[1] = "up"
 	eq(stratagem.CODE[1], "down", "each def has a copy of the code")
@@ -272,7 +272,7 @@ local OURS = { stratagem_info = { name = "shared_resupply" }, upgrade_value = 2 
 test("the shared crate holds four boxes, two by two, and the game's list goes back", function()
 	local w = crate_world()
 	local ctx = { state = {} }
-	payload.setup_master("shared_resupply", w.original, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
+	payload.setup_master("shared_resupply", 4, w.original, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
 	eq(#w.spawned, 4)
 	eq(#ctx.state.content_units, 4, "the crate empties only when all four are taken")
 	local seen = {}
@@ -289,9 +289,9 @@ end)
 test("a standard crate keeps the game's two boxes", function()
 	local w = crate_world()
 	local ctx = { state = {} }
-	payload.setup_master("shared_resupply", w.original, w.self, "crate", ctx, { stratagem_info = { name = "stratagem_resupply" } })
+	payload.setup_master("shared_resupply", 4, w.original, w.self, "crate", ctx, { stratagem_info = { name = "stratagem_resupply" } })
 	eq(#w.spawned, 2)
-	payload.setup_master("shared_resupply", w.original, w.self, "crate", { state = {} }, nil)
+	payload.setup_master("shared_resupply", 4, w.original, w.self, "crate", { state = {} }, nil)
 	eq(#w.spawned, 4, "a crate with no setup info too")
 end)
 
@@ -300,7 +300,7 @@ test("when the game reads another copy of the list the two missing boxes come af
 	local copy = { supply_crate_info = { content = {} } }
 	payload.engine.settings = function() return copy end
 	local ctx = { state = {} }
-	payload.setup_master("shared_resupply", w.original, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
+	payload.setup_master("shared_resupply", 4, w.original, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
 	eq(#ctx.state.content_units, 4)
 	eq(w.spawned[3].at[1], 0.5) eq(w.spawned[4].at[1], -0.5)
 	eq(w.spawned[3].init.hide_time, 3.5, "hidden until the crate opens, as the game's")
@@ -311,16 +311,52 @@ test("a crate taken over from a player who left spawns nothing more", function()
 	payload.engine.settings = function() return nil end
 	local ctx = { state = {} }
 	local function migrated(self, unit, c) c.state.was_migrated, c.state.content_units = true, {} end
-	payload.setup_master("shared_resupply", migrated, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
+	payload.setup_master("shared_resupply", 4, migrated, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
 	eq(#w.spawned, 0)
 end)
 
 test("an error in the game's function still puts the list back", function()
 	local w = crate_world()
-	local ok = pcall(payload.setup_master, "shared_resupply", function() error("boom") end, w.self, "crate", { state = {} },
+	local ok = pcall(payload.setup_master, "shared_resupply", 4, function() error("boom") end, w.self, "crate", { state = {} },
 		{ stratagem_info = OURS.stratagem_info })
 	eq(ok, false)
 	eq(w.settings.supply_crate_info.content, w.content)
+end)
+
+test("the box count option: a whole number from 2 to 4, else 4", function()
+	local values = {}
+	local settings = { get = function(id) return values[id] end }
+	eq(payload.count(settings), 4, "nothing set")
+	values.box_count = 2 eq(payload.count(settings), 2)
+	values.box_count = 3 eq(payload.count(settings), 3)
+	values.box_count = 9 eq(payload.count(settings), 4)
+	values.box_count = 1 eq(payload.count(settings), 2)
+	values.box_count = 2.6 eq(payload.count(settings), 3)
+	values.box_count = "x" eq(payload.count(settings), 4)
+	eq(payload.count(nil), 4)
+	eq(payload.count({ get = function() error("no") end }), 4)
+end)
+
+test("the crate holds the chosen count, and the game's list goes back", function()
+	for _, n in ipairs({ 2, 3 }) do
+		local w = crate_world()
+		local ctx = { state = {} }
+		payload.setup_master("shared_resupply", n, w.original, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
+		eq(#w.spawned, n)
+		eq(#ctx.state.content_units, n)
+		eq(w.settings.supply_crate_info.content, w.content)
+	end
+	local w = crate_world()
+	payload.setup_master("shared_resupply", 7, w.original, w.self, "crate", { state = {} }, { stratagem_info = OURS.stratagem_info })
+	eq(#w.spawned, 4, "an odd count falls back to four")
+end)
+
+test("with another copy of the list, three boxes top up by one", function()
+	local w = crate_world()
+	payload.engine.settings = function() return { supply_crate_info = { content = {} } } end
+	local ctx = { state = {} }
+	payload.setup_master("shared_resupply", 3, w.original, w.self, "crate", ctx, { stratagem_info = OURS.stratagem_info })
+	eq(#ctx.state.content_units, 3)
 end)
 
 return T

@@ -10,6 +10,7 @@ CHANGELOG.md export-ignore
 CLAUDE.md export-ignore
 tests export-ignore
 tools export-ignore
+thumbnail.jpg export-ignore
 
 # The icon, as the game stores it.
 res/* binary
