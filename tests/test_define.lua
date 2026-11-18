@@ -7,7 +7,7 @@ local T = {}
 local function test(name, fn) T[#T + 1] = { name, fn } end
 
 local function api_file()
-	for _, dir in ipairs({ os.getenv("OBSIDIAN_API") or "", "../../ProjectObsidian/Bundled/ObsidianAPI" }) do
+	for _, dir in ipairs({ os.getenv("OBSIDIAN_API") or "", "../../../ProjectObsidian/Bundled/ObsidianAPI" }) do
 		if dir ~= "" then
 			local path = dir .. "/lib/custom.lua"
 			local f = io.open(path, "r")
